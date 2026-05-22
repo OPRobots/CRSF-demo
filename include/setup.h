@@ -12,6 +12,7 @@
 #include "config.h"
 #include "delay.h"
 #include "usart.h"
+#include "crsf.h"
 
 void setup(void);
 

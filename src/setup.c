@@ -6,7 +6,7 @@
  * SYSCLK: 84 MHz (HSE 25 MHz + PLL)
  * GPIO:   A, C
  * USART1: printf por PA9/PA10
- * SPI1:   SRAM 23AA04M por PA5/PA6/PA7
+ * USART6: receptor CRSF por PA11/PA12
  * DWT:    contador de ciclos para delay_us
  */
 static void setup_clock(void) {
@@ -18,6 +18,7 @@ static void setup_clock(void) {
   rcc_periph_clock_enable(RCC_SYSCFG);
 
   rcc_periph_clock_enable(RCC_USART1);
+  rcc_periph_clock_enable(RCC_USART6);
 
   dwt_enable_cycle_counter();
 }
@@ -34,12 +35,15 @@ static void setup_systick(void) {
 static void setup_timer_priorities(void) {
   nvic_set_priority(NVIC_SYSTICK_IRQ, 16 * 1);
   nvic_set_priority(NVIC_USART1_IRQ, 16 * 2);
+  nvic_set_priority(NVIC_USART6_IRQ, 16 * 4);
 
   nvic_enable_irq(NVIC_USART1_IRQ);
+  nvic_enable_irq(NVIC_USART6_IRQ);
   // nvic_enable_irq(NVIC_EXTI15_10_IRQ);
 }
 
 static void setup_usart(void) {
+  // USART1: consola debug (printf) — PA9 TX / PA10 RX
   usart_set_baudrate(USART1, 115200);
   usart_set_databits(USART1, 8);
   usart_set_stopbits(USART1, USART_STOPBITS_1);
@@ -51,15 +55,41 @@ static void setup_usart(void) {
   usart_enable(USART1);
 }
 
+static void setup_usart_crsf(void) {
+  usart_set_baudrate(USART6, 420000);
+  usart_set_databits(USART6, 8);
+  usart_set_stopbits(USART6, USART_STOPBITS_1);
+  usart_set_parity(USART6, USART_PARITY_NONE);
+  usart_set_flow_control(USART6, USART_FLOWCONTROL_NONE);
+  usart_set_mode(USART6, USART_MODE_RX);
+  usart_enable_rx_interrupt(USART6);
+  usart_enable(USART6);
+
+  crsf_init();
+}
+
+void usart6_isr(void) {
+  uint32_t status = USART_SR(USART6);
+  uint8_t data = (uint8_t)usart_recv(USART6);
+
+  if (status & USART_SR_RXNE) {
+    parser_data_feed(data);
+  }
+}
+
 static void setup_gpio(void) {
 
   // LED
   gpio_mode_setup(GPIOC, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, GPIO13);
   gpio_set(GPIOC, GPIO13);
 
-  // USART1
+  // USART1: PA9 TX, PA10 RX (AF7)
   gpio_mode_setup(GPIOA, GPIO_MODE_AF, GPIO_PUPD_NONE, GPIO9 | GPIO10);
   gpio_set_af(GPIOA, GPIO_AF7, GPIO9 | GPIO10);
+
+  // USART6: PA11 TX, PA12 RX (AF8) — receptor CRSF/CRSF
+  gpio_mode_setup(GPIOA, GPIO_MODE_AF, GPIO_PUPD_PULLUP, GPIO11 | GPIO12);
+  gpio_set_af(GPIOA, GPIO_AF8, GPIO11 | GPIO12);
 }
 
 void setup(void) {
@@ -68,4 +98,5 @@ void setup(void) {
   setup_timer_priorities();
   setup_gpio();
   setup_usart();
+  setup_usart_crsf();
 }
