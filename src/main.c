@@ -1,10 +1,26 @@
 #include <stdio.h>
 
-#include "crsf.h"
+#include "crsf_rx.h"
+#include "crsf_tx.h"
 #include "setup.h"
 
 void sys_tick_handler(void) {
   clock_tick();
+}
+
+static void telemetry_demo(void) {
+  uint32_t t = get_clock_ticks();
+
+  uint32_t batt_t = t % 60000;
+  crsf_telemetry_set_battery((uint16_t)(14800 - batt_t * 400 / 60000), (uint16_t)(10000 + (t % 4000) * 40000 / 4000), (t / 10000) * 3, (uint8_t)(100 - batt_t * 30 / 60000));
+
+  crsf_telemetry_set_attitude((int16_t)(t % 8000), (int16_t)(2500 + (int32_t)((t % 20000) * 4000 / 20000)), (int16_t)((t % 10000) * 32000 / 10000));
+
+  static const char *const states[] = {"IDLE", "ARMED", "SPINNING", "BRAKING"};
+  crsf_telemetry_set_flight_mode(states[(t / 4000) % 4]);
+
+  // crsf_telemetry_set_baro((int32_t)((t % 8000) * 200 / 8000), 25);
+  // crsf_telemetry_set_gps(404238000L, -37120000L, 0, 0, 0, 0);
 }
 
 int main(void) {
@@ -31,6 +47,8 @@ int main(void) {
           data->link_quality, data->signal_strength);
     }
 
+    telemetry_demo();
+    crsf_telemetry_update();
     delay(200);
   }
 }

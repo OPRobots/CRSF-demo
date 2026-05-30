@@ -1,4 +1,4 @@
-#include "crsf.h"
+#include "crsf_rx.h"
 
 #define CRSF_SYNC_BYTE 0xC8
 #define CRSF_MAX_LEN 64
@@ -24,45 +24,29 @@ static uint8_t data_length;
 static volatile crsf_data_t crsf_data;
 static volatile uint32_t last_data_ms;
 
-static uint8_t crc8_update(uint8_t crc, uint8_t data) {
-  crc ^= data;
-  for (int i = 0; i < 8; i++) {
-    crc = (crc & 0x80U) ? ((uint8_t)((crc << 1) ^ 0xD5U)) : (uint8_t)(crc << 1);
-  }
-  return crc;
+static void parse_channels(const uint8_t *payload) {
+  crsf_data.channels[0] = ((uint16_t)(payload[0] | ((uint16_t)payload[1] << 8))) & 0x07FF;
+  crsf_data.channels[1] = ((uint16_t)(payload[1] >> 3 | ((uint16_t)payload[2] << 5))) & 0x07FF;
+  crsf_data.channels[2] = ((uint16_t)(payload[2] >> 6 | ((uint16_t)payload[3] << 2) | ((uint16_t)payload[4] << 10))) & 0x07FF;
+  crsf_data.channels[3] = ((uint16_t)(payload[4] >> 1 | ((uint16_t)payload[5] << 7))) & 0x07FF;
+  crsf_data.channels[4] = ((uint16_t)(payload[5] >> 4 | ((uint16_t)payload[6] << 4))) & 0x07FF;
+  crsf_data.channels[5] = ((uint16_t)(payload[6] >> 7 | ((uint16_t)payload[7] << 1) | ((uint16_t)payload[8] << 9))) & 0x07FF;
+  crsf_data.channels[6] = ((uint16_t)(payload[8] >> 2 | ((uint16_t)payload[9] << 6))) & 0x07FF;
+  crsf_data.channels[7] = ((uint16_t)(payload[9] >> 5 | ((uint16_t)payload[10] << 3))) & 0x07FF;
+  crsf_data.channels[8] = ((uint16_t)(payload[11] | ((uint16_t)payload[12] << 8))) & 0x07FF;
+  crsf_data.channels[9] = ((uint16_t)(payload[12] >> 3 | ((uint16_t)payload[13] << 5))) & 0x07FF;
+  crsf_data.channels[10] = ((uint16_t)(payload[13] >> 6 | ((uint16_t)payload[14] << 2) | ((uint16_t)payload[15] << 10))) & 0x07FF;
+  crsf_data.channels[11] = ((uint16_t)(payload[15] >> 1 | ((uint16_t)payload[16] << 7))) & 0x07FF;
+  crsf_data.channels[12] = ((uint16_t)(payload[16] >> 4 | ((uint16_t)payload[17] << 4))) & 0x07FF;
+  crsf_data.channels[13] = ((uint16_t)(payload[17] >> 7 | ((uint16_t)payload[18] << 1) | ((uint16_t)payload[19] << 9))) & 0x07FF;
+  crsf_data.channels[14] = ((uint16_t)(payload[19] >> 2 | ((uint16_t)payload[20] << 6))) & 0x07FF;
+  crsf_data.channels[15] = ((uint16_t)(payload[20] >> 5 | ((uint16_t)payload[21] << 3))) & 0x07FF;
 }
 
-static uint8_t crsf_crc(const uint8_t *buf, uint8_t len) {
-  uint8_t crc = 0;
-  for (uint8_t i = 0; i < len; i++) {
-    crc = crc8_update(crc, buf[i]);
-  }
-  return crc;
-}
-
-static void parse_channels(const uint8_t *p) {
-  crsf_data.channels[0] = ((uint16_t)(p[0] | ((uint16_t)p[1] << 8))) & 0x07FFU;
-  crsf_data.channels[1] = ((uint16_t)(p[1] >> 3 | ((uint16_t)p[2] << 5))) & 0x07FFU;
-  crsf_data.channels[2] = ((uint16_t)(p[2] >> 6 | ((uint16_t)p[3] << 2) | ((uint16_t)p[4] << 10))) & 0x07FFU;
-  crsf_data.channels[3] = ((uint16_t)(p[4] >> 1 | ((uint16_t)p[5] << 7))) & 0x07FFU;
-  crsf_data.channels[4] = ((uint16_t)(p[5] >> 4 | ((uint16_t)p[6] << 4))) & 0x07FFU;
-  crsf_data.channels[5] = ((uint16_t)(p[6] >> 7 | ((uint16_t)p[7] << 1) | ((uint16_t)p[8] << 9))) & 0x07FFU;
-  crsf_data.channels[6] = ((uint16_t)(p[8] >> 2 | ((uint16_t)p[9] << 6))) & 0x07FFU;
-  crsf_data.channels[7] = ((uint16_t)(p[9] >> 5 | ((uint16_t)p[10] << 3))) & 0x07FFU;
-  crsf_data.channels[8] = ((uint16_t)(p[11] | ((uint16_t)p[12] << 8))) & 0x07FFU;
-  crsf_data.channels[9] = ((uint16_t)(p[12] >> 3 | ((uint16_t)p[13] << 5))) & 0x07FFU;
-  crsf_data.channels[10] = ((uint16_t)(p[13] >> 6 | ((uint16_t)p[14] << 2) | ((uint16_t)p[15] << 10))) & 0x07FFU;
-  crsf_data.channels[11] = ((uint16_t)(p[15] >> 1 | ((uint16_t)p[16] << 7))) & 0x07FFU;
-  crsf_data.channels[12] = ((uint16_t)(p[16] >> 4 | ((uint16_t)p[17] << 4))) & 0x07FFU;
-  crsf_data.channels[13] = ((uint16_t)(p[17] >> 7 | ((uint16_t)p[18] << 1) | ((uint16_t)p[19] << 9))) & 0x07FFU;
-  crsf_data.channels[14] = ((uint16_t)(p[19] >> 2 | ((uint16_t)p[20] << 6))) & 0x07FFU;
-  crsf_data.channels[15] = ((uint16_t)(p[20] >> 5 | ((uint16_t)p[21] << 3))) & 0x07FFU;
-}
-
-static void parse_stats(const uint8_t *p) {
-  crsf_data.signal_strength = -(int8_t)p[0];
-  crsf_data.link_quality = p[2];
-  crsf_data.signal_to_noise = (int8_t)p[3];
+static void parse_stats(const uint8_t *payload) {
+  crsf_data.signal_strength = -(int8_t)payload[0];
+  crsf_data.link_quality = payload[2];
+  crsf_data.signal_to_noise = (int8_t)payload[3];
 }
 
 static void process_data(void) {

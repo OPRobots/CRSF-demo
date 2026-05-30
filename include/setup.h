@@ -10,9 +10,9 @@
 #include <libopencm3/stm32/usart.h>
 
 #include "config.h"
+#include "crsf_rx.h"
 #include "delay.h"
 #include "usart.h"
-#include "crsf.h"
 
 void setup(void);
 
