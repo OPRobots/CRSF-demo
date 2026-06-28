@@ -96,3 +96,22 @@ Sin señal (failsafe activo):
 ```
 [FAILSAFE] Sin señal del emisor
 ```
+
+## 📚 Documentación
+
+- [Hardware](docs/01-hardware.md) — MCU, pines, reloj, alimentación, diagrama de bloques
+- [Arquitectura Software](docs/02-software-architecture.md) — Bucle principal, ISRs, prioridades, máquina de estados del parser
+- [Comunicaciones](docs/03-communications.md) — Protocolo CRSF, recepción de canales, transmisión de telemetría
+- [Debug](docs/04-debug-system.md) — Consola serie, LED heartbeat, syscall `_write`
+- [Problemas Conocidos](docs/05-known-issues.md) — 6 issues documentados (0 críticos, 3 moderados, 3 leves)
+
+## 🔧 Stack Tecnológico
+
+| Componente | Tecnología |
+|-----------|-----------|
+| **MCU** | STM32F401CCU6 (ARM Cortex-M4) |
+| **Framework** | LibOpenCM3 |
+| **Build System** | PlatformIO |
+| **Lenguaje** | C11 |
+| **Debug Probe** | STLink v2 (SWD) |
+| **Documentación** | MkDocs Material |
