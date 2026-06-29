@@ -1,8 +1,8 @@
 site_name: CRSF-demo
 site_description: Documentación técnica — Demo de protocolo CRSF con STM32F401 y receptor ELRS
 site_author: robotaleh
-site_url: https://docs.oprobots.org/modules/ELRS-demo
-repo_name: OPRobots/ELRS-demo
+site_url: https://docs.oprobots.org/demos/CRSF-demo
+repo_name: OPRobots/CRSF-demo
 
 theme:
   name: material
